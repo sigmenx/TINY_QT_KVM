@@ -48,3 +48,8 @@
    QMAKE_RPATHDIR += $$PWD/SDK/ElaWidgetTools/lib/arm
    ```
 2. 重复3.1中的步骤，完成编译并运行。
+
+
+Uploading video.mp4…
+
+
