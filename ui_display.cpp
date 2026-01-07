@@ -1,11 +1,7 @@
 #include "ui_display.h"
-#include "ElaTheme.h"
 
 #include <QDebug>
-#include <QDateTime>
 #include <QFileDialog>
-#include <QFrame>
-#include <QFont>
 #include <QSerialPortInfo>
 
 ui_display::ui_display(QString camdevPath, QWidget *parent)

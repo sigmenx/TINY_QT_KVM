@@ -1,9 +1,5 @@
 #include "pro_hidcontroller.h"
-#include <QKeyEvent>
-#include <QMouseEvent>
-#include <QDateTime>
 #include <QDebug>
-#include <QThread>
 
 // ===CH9329通信手册的宏定义 ===
 #define MOUSE_LEFT      0x01
@@ -20,6 +16,7 @@
 #define MOD_R_ALT       0x40
 #define MOD_R_WIN       0x80
 // ==========================
+
 // 静态辅助函数：将 Qt 的鼠标按键状态转换为 CH9329 的按键 Byte
 static uint8_t getHidButtonState(Qt::MouseButtons buttons)// 这里使用 buttons() 而不是 button()，因为需要获取"当前所有按下的键"的状态
 {

@@ -1,9 +1,6 @@
 #ifndef DRV_CAMERA_H
 #define DRV_CAMERA_H
 
-#include <QString>
-#include <QSize>
-#include <QVector>
 #include <QImage>
 #include <QObject>
 

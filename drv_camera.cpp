@@ -3,8 +3,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <QDebug>
-#include <cstring> // for memset
 
 CameraDevice::CameraDevice(QObject *parent) : QObject(parent),
     m_fd(-1), m_isCapturing(false), m_buffers(nullptr), m_nBuffers(0)

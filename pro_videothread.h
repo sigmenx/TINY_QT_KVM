@@ -2,7 +2,6 @@
 #define PRO_VIDEOTHREAD_H
 
 #include <QThread>
-#include <QImage>
 #include <QMutex>
 #include <QWaitCondition>
 #include "drv_camera.h"

@@ -1,6 +1,5 @@
 #include "drv_ch9329.h"
 #include <QDebug>
-#include <QThread>
 #include <unistd.h>
 
 // CH9329 协议常量

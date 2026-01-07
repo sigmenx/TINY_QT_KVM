@@ -3,8 +3,6 @@
 
 #include <QObject>
 #include <QSerialPort>
-#include <vector>
-#include <QString>
 
 class CH9329Driver : public QObject
 {

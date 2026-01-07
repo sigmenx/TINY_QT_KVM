@@ -1,18 +1,11 @@
 #ifndef PRO_HIDCONTROLLER_H
 #define PRO_HIDCONTROLLER_H
 
-#include <QObject>
-#include <QMap>
-#include <QPoint>
-#include <QTime>
+#include "drv_ch9329.h"
+
 #include <QWidget>
 #include <QTimer>
 #include <QElapsedTimer> // 使用 QElapsedTimer 更精准
-#include "drv_ch9329.h"
-
-// === 核心修正：必须包含以下事件头文件 ===
-#include <QEvent>
-#include <QMouseEvent>
 #include <QKeyEvent>
 
 // 定义操作模式

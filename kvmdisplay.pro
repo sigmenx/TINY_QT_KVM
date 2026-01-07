@@ -38,7 +38,10 @@ INCLUDEPATH += $$PWD/SDK/ElaWidgetTools/include
 DEPENDPATH  += $$PWD/SDK/ElaWidgetTools/include
 
 # 链接库 (-L指定路径, -l指定库名去头去尾)
-LIBS += -L$$PWD/SDK/ElaWidgetTools/lib -lElaWidgetTools
+# x86 架构 ElaWidgetTools 动态库文件
+ LIBS += -L$$PWD/SDK/ElaWidgetTools/lib/x86 -lElaWidgetTools
+# arm 架构
+# LIBS += -L$$PWD/SDK/ElaWidgetTools/lib/arm -lElaWidgetTools
 
 # 确保运行时能找到库 (开发阶段)
-QMAKE_RPATHDIR += $$PWD/SDK/ElaWidgetTools/lib
+# QMAKE_RPATHDIR += $$PWD/SDK/ElaWidgetTools/lib/x86

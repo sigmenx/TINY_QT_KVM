@@ -1,22 +1,17 @@
 #ifndef UI_DISPLAY_H
 #define UI_DISPLAY_H
 
-#include <QWidget>
-#include <QTimer>
 #include <QLabel>
 #include <QBoxLayout>
 #include <QGroupBox>
-#include <QResizeEvent>
-#include <QThread>
 
 // 引入 Ela 控件
-// #include "ElaWidget.h" // 不再需要 ElaWidget
 #include "ElaIconButton.h"
 #include "ElaPushButton.h"
 #include "ElaComboBox.h"
 #include "ElaRadioButton.h"
 
-// 引入新的线程头文件
+// 引入控制器头文件
 #include "pro_videothread.h"
 #include "pro_hidcontroller.h"
 
