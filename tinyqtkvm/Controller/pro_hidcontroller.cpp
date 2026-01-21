@@ -36,10 +36,11 @@ HidController::HidController(QObject *parent): QObject(parent),
     //初始化鼠标模式
     m_currentMode = MODE_NONE;
 
-    // 初始化状态变量
-    m_isLeftButtonDown = false;
-    m_longPressHandled = false;
-    m_hasMovedSignificantly = false;
+    //摇杆模式变量初始化
+    m_is_click = false;           // 标记是否为点击操作
+    m_is_left_down = false;       // 标记左键是否按下
+
+    //鼠标限流相关
     m_lastMouseMoveTime = 0;
     m_elapsedTimer.start();
 
@@ -100,7 +101,7 @@ void HidController::updateScaleParams()
     // 3. 存入缓存
     m_displayRect = QRect(x, y, scaledSize.width(), scaledSize.height());
 
-    qDebug() << "Scale Update: Source" << m_sourceSize
+    qDebug() << "[HIDCONTROLLER]Scale Update: Source" << m_sourceSize
              << "Widget" << m_widgetSize
              << "DisplayRect" << m_displayRect;
 }
@@ -117,37 +118,21 @@ void HidController::onMainLoop()
 
         if (cmd.type == HidCommand::CMD_MOUSE_ABS) {
             m_driver->sendMouseAbs(cmd.param1, cmd.param2, cmd.param3, cmd.param4);
-            qDebug()<<"ABSmode";
-            qDebug()<<"x:"<<cmd.param1<<",y:"<<cmd.param2<<",button:"<<cmd.param3<<",wheel:"<<cmd.param4;
+            //qDebug()<<"ABSmode";
+            //qDebug()<<"x:"<<cmd.param1<<",y:"<<cmd.param2<<",button:"<<cmd.param3<<",wheel:"<<cmd.param4;
         }
         else if (cmd.type == HidCommand::CMD_MOUSE_REL) {
             m_driver->sendMouseRel(cmd.param1, cmd.param2, cmd.param3, cmd.param4);
-            qDebug()<<"RELmode";
-            qDebug()<<"x:"<<cmd.param1<<",y:"<<cmd.param2<<",button:"<<cmd.param3<<",wheel:"<<cmd.param4;
+            //qDebug()<<"RELmode";
+            //qDebug()<<"x:"<<cmd.param1<<",y:"<<cmd.param2<<",button:"<<cmd.param3<<",wheel:"<<cmd.param4;
         }
         else if (cmd.type == HidCommand::CMD_KEYBOARD) {
-            qDebug()<<"KEYBOD";
-            qDebug()<<"modifiers:"<<cmd.param1<<",key:"<<cmd.param2;
+            //qDebug()<<"KEYBOD";
+            //qDebug()<<"modifiers:"<<cmd.param1<<",key:"<<cmd.param2;
             m_driver->sendKbPacket(cmd.param1, cmd.param2);
         }
     }
 
-    // 2. 长按检测逻辑 (在 Loop 中轮询)
-    // 仅在 相对模式(触控) 下生效
-    if (m_currentMode == MODE_RELATIVE && m_isLeftButtonDown && !m_longPressHandled) {
-        // 如果移动距离超过阈值，取消长按判定
-        if (m_hasMovedSignificantly) {
-            m_longPressHandled = true; // 视为无效，不再检测长按
-        }
-        else {
-            // 检查时间差 (500ms)
-            if (m_elapsedTimer.elapsed() - m_pressStartTime > 500) {
-                qDebug() << "Touch: Long Press Triggered (Right Click)";
-                m_driver->clickMouse(MOUSE_RIGHT); // 发送右键点击
-                m_longPressHandled = true;         // 标记已处理
-            }
-        }
-    }
 }
 
 // ==========================================
@@ -175,10 +160,11 @@ bool HidController::eventFilter(QObject *watched, QEvent *event) {
             return true; // 拦截
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
+        case QEvent::MouseButtonDblClick:
         case QEvent::MouseMove:
         case QEvent::Wheel:
             if (watched->isWidgetType()) {
-                parseLocalMouse(watched, event);//, event->type());
+                parseLocalMouse(event);
                 return true; // 拦截
             }
             break;
@@ -188,7 +174,7 @@ bool HidController::eventFilter(QObject *watched, QEvent *event) {
 }
 
 // 本地鼠标解析
-void HidController::parseLocalMouse(QObject *watched, QEvent *evt)
+void HidController::parseLocalMouse(QEvent *evt)
 {
     // === 1. 优先处理滚轮事件 (强制走相对模式) ===
     if (evt->type() == QEvent::Wheel) {
@@ -219,7 +205,6 @@ void HidController::parseLocalMouse(QObject *watched, QEvent *evt)
         }
         m_lastMouseMoveTime = now; // 更新发送时间
     }
-
 
     // === 2. 处理普通鼠标事件 (按键/移动) ===
     // 此时肯定是 MouseButtonPress / Release / Move
@@ -253,44 +238,50 @@ void HidController::parseLocalMouse(QObject *watched, QEvent *evt)
     }
 
     // === 4. 相对模式处理 ===
+    // =======================================================================
+    // 相对模式 (触控板逻辑：滑动=移动光标，原地点击=鼠标点击)
+    // =======================================================================
     else if (m_currentMode == MODE_RELATIVE) {
+
         QEvent::Type type = evt->type();
-        if (type == QEvent::MouseButtonPress && me->button() == Qt::LeftButton) {
-            m_isLeftButtonDown = true;
-            m_pressStartTime = m_elapsedTimer.elapsed();
-            // [QT5] 使用 globalPos()
-            m_pressStartPos = me->globalPos();
-            m_longPressHandled = false;
-            m_hasMovedSignificantly = false;
-        }
-        else if (type == QEvent::MouseMove) {
-            // [QT5] 使用 globalPos() 计算差值
-            static QPoint lastPos = me->globalPos();
-            int dx = me->globalPos().x() - lastPos.x();
-            int dy = me->globalPos().y() - lastPos.y();
-            lastPos = me->globalPos();
 
-            // 判断是否大幅移动
-            if ((me->globalPos() - m_pressStartPos).manhattanLength() > 5) {
-                m_hasMovedSignificantly = true;
+        if(type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick){
+            if((buttons & Qt::LeftButton) && !m_is_left_down){
+                // 1. 左键按下：初始化状态
+                m_is_left_down = true;
+                m_is_click = true;       // 初始默认为点击
+                m_lastPos = currentPos;  // 记录起点
+                return;
             }
-
-            HidCommand cmd;
-            cmd.type = HidCommand::CMD_MOUSE_REL;
-            cmd.param1 = qBound(-127, dx, 127);
-            cmd.param2 = qBound(-127, dy, 127);
-            cmd.param3 = 0;
-            cmd.param4 = 0;
-            HidPacketQueue::instance()->push(cmd);
+            else if ((buttons & Qt::RightButton)){
+                // 2. 右键点击：逻辑独立，优先处理 (直接发送按下+松开)
+                HidPacketQueue::instance()->push({HidCommand::CMD_MOUSE_REL, 0, 0, 2, 0});
+                HidPacketQueue::instance()->push({HidCommand::CMD_MOUSE_REL, 0, 0, 0, 0});
+                return;
+            }
         }
-        else if (type == QEvent::MouseButtonRelease && me->button() == Qt::LeftButton) {
-            m_isLeftButtonDown = false;
-            if (!m_longPressHandled && !m_hasMovedSignificantly) {
-                HidCommand clickDown = {HidCommand::CMD_MOUSE_REL, 0, 0, MOUSE_LEFT, 0};
-                HidCommand clickUp   = {HidCommand::CMD_MOUSE_REL, 0, 0, 0, 0};
-                HidPacketQueue::instance()->push(clickDown);
-                HidPacketQueue::instance()->push(clickUp);
+        // 3. 鼠标移动：左键按住时处理
+        else if (type == QEvent::MouseMove && m_is_left_down) {
+            // 阈值判断：曼哈顿距离 > 3 像素才视为拖拽滑动
+            if ((currentPos - m_lastPos).manhattanLength() > 3) {
+                int dx = currentPos.x() - m_lastPos.x();
+                int dy = currentPos.y() - m_lastPos.y();
+                // 发送相对位移指令
+                HidCommand cmd = {HidCommand::CMD_MOUSE_REL, qBound(-127, dx, 127), qBound(-127, dy, 127), 0, 0};
+                HidPacketQueue::instance()->push(cmd);
+                m_lastPos = currentPos; // 更新基准点 (跟随移动)
+                m_is_click = false; // 产生了有效位移，不再视为点击
             }
+        }
+        // 4. 左键松开：结算
+        else if (type == QEvent::MouseButtonRelease && m_is_left_down) {
+            // 如果判定为点击 (且松开时位置未偏离太远)
+            if (m_is_click && (currentPos - m_lastPos).manhattanLength() < 3) {
+                HidPacketQueue::instance()->push({HidCommand::CMD_MOUSE_REL, 0, 0, 1, 0});
+                HidPacketQueue::instance()->push({HidCommand::CMD_MOUSE_REL, 0, 0, 0, 0});
+            }
+            m_is_left_down = false; // 重置状态
+            m_lastPos = currentPos;
         }
     }
 }

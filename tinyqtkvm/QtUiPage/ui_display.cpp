@@ -29,7 +29,7 @@ ui_display::ui_display(QString camdevPath, QWidget *parent)
 
     m_topbarvisiable=false;
     // 2. 纯 UI 设置
-    setWindowTitle("KVMDISPLAY");
+    setWindowTitle("PADSKVM");
     resize(1024, 768); // 默认大小
     initUI();
     // 3.初始化摄像头 ===
@@ -170,11 +170,49 @@ void ui_display::startCameraLogic()
         connect(m_VideoManager, &VideoController::frameReady, this, &ui_display::handleFrame);
         m_VideoManager->start(); // 启动循环，但此时 m_pause 为 true，线程会 wait
 
-        // 触发首次配置
+        // ========== 修改后的初始化选中逻辑 ====================================================
         if(cmb_vid_FmtSelect->count() > 0) {
-            on_cmb_vid_FmtSelect_currentIndexChanged(0);
-            on_btn_vid_SetApply_clicked(); // 这里会调用 updateSettings 并唤醒线程
+            // 1. 查找并选中 YUYV4:2:2 格式（V4L2_PIX_FMT_YUYV）
+            int yuyvIndex = -1;
+            for (int i = 0; i < cmb_vid_FmtSelect->count(); ++i) {
+                if (cmb_vid_FmtSelect->itemData(i).toUInt() == V4L2_PIX_FMT_YUYV) {
+                    yuyvIndex = i;
+                    break;
+                }
+            }
+            // 找不到则默认选第一个
+            int fmtIndex = (yuyvIndex != -1) ? yuyvIndex : 0;
+            cmb_vid_FmtSelect->setCurrentIndex(fmtIndex);
+            // 触发分辨率列表刷新
+            on_cmb_vid_FmtSelect_currentIndexChanged(fmtIndex);
+
+            // 2. 查找并选中 1920x1080 分辨率
+            if (cmb_vid_ResSelect->count() > 0) {
+                int res1080pIndex = -1;
+                const QSize targetRes(1920, 1080);
+                for (int i = 0; i < cmb_vid_ResSelect->count(); ++i) {
+                    QSize currentRes = cmb_vid_ResSelect->itemData(i).toSize();
+                    if (currentRes == targetRes) {
+                        res1080pIndex = i;
+                        break;
+                    }
+                }
+                // 找不到则默认选第一个
+                res1080pIndex = (res1080pIndex != -1) ? res1080pIndex : 0;
+                cmb_vid_ResSelect->setCurrentIndex(res1080pIndex);
+                // 触发帧率列表刷新
+                on_cmb_vid_ResSelect_currentIndexChanged(res1080pIndex);
+            }
+
+            // 3. 应用配置（和原有逻辑一致）
+            on_btn_vid_SetApply_clicked();
         }
+        // ========== 结束修改 =======================================================
+//        // 触发首次配置
+//        if(cmb_vid_FmtSelect->count() > 0) {
+//            on_cmb_vid_FmtSelect_currentIndexChanged(0);
+//            on_btn_vid_SetApply_clicked(); // 这里会调用 updateSettings 并唤醒线程
+//        }
     }
 }
 
@@ -485,8 +523,8 @@ void ui_display::initTopBar()
     };
 
     rbt_hid_EnCtrl = setupRadio("关闭", true);
-    rbt_hid_AbsMode = setupRadio("普通");
-    rbt_hid_RefMode = setupRadio("触控");
+    rbt_hid_AbsMode = setupRadio("跟随");
+    rbt_hid_RefMode = setupRadio("摇杆");
 
     // 连接信号逻辑
     connect(rbt_hid_EnCtrl, &ElaRadioButton::toggled, this, [=](bool c){ if(c) {

@@ -41,7 +41,7 @@ private slots:
 
 private:
     //本地鼠标事件
-    void parseLocalMouse(QObject *watched, QEvent *evt);
+    void parseLocalMouse(QEvent *evt);
     //本地键盘事件
     void parseLocalKey(QKeyEvent *e, bool isPress);
 
@@ -66,16 +66,14 @@ private:
     // === 预计算的映射参数 (避免每次鼠标移动都做除法) ===
     QRect m_displayRect; // 视频实际显示的区域 (去掉了黑边)
 
-    // === 长按与触控逻辑变量 ===
-    bool m_isLeftButtonDown;      // 左键是否按下
-    qint64 m_pressStartTime;      // 按下时的时间戳
-    QPoint m_pressStartPos;       // 按下时的坐标
-    bool m_longPressHandled;      // 长按是否已经处理过
-    bool m_hasMovedSignificantly; // 是否发生了明显移动
+    // === 摇杆模式逻辑变量 ===
+    QPoint m_lastPos;
+    bool m_is_click;           // 标记是否为点击操作
+    bool m_is_left_down;       // 标记左键是否按下
+
 
     // === 用于鼠标移动限流 ===
     qint64 m_lastMouseMoveTime; // 上一次处理MouseMove的时间戳
-
     // 全局计时器
     QElapsedTimer m_elapsedTimer;
 };
