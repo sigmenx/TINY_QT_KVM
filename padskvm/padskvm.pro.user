@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 6.0.2, 2026-01-19T15:15:05. -->
+<!-- Written by QtCreator 6.0.2, 2026-01-22T15:59:50. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -236,8 +236,8 @@
     <valuelist type="QVariantList" key="CustomOutputParsers"/>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:/home/trumpx/桌面/APPTEST/kvmdisplay_project/kvmdisplay/tinyqtkvm/kvmdisplay.pro</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/trumpx/桌面/APPTEST/kvmdisplay_project/kvmdisplay/tinyqtkvm/kvmdisplay.pro</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:/home/trumpx/桌面/APPTEST/kvmdisplay_project/kvmdisplay/tinyqtkvm/padskvm.pro</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/trumpx/桌面/APPTEST/kvmdisplay_project/kvmdisplay/tinyqtkvm/padskvm.pro</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>

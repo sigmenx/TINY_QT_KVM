@@ -1,7 +1,13 @@
 #include "videoencoder.h"
 
-VideoEncoder::VideoEncoder(int width, int height, int bitrate)
-    : width_(width), height_(height), bitrate_(bitrate) {}
+VideoEncoder::VideoEncoder(int width, int height, int bitrate, AVPixelFormat inputFmt)
+    : width_(width), height_(height), bitrate_(bitrate), input_pix_fmt_(inputFmt)
+{
+    // 如果外部未指定，默认兼容旧代码 YUYV422
+    if (input_pix_fmt_ == AV_PIX_FMT_NONE) {
+        input_pix_fmt_ = AV_PIX_FMT_YUYV422;
+    }
+}
 
 VideoEncoder::~VideoEncoder() {
     if (codec_ctx_) avcodec_free_context(&codec_ctx_);
@@ -54,10 +60,10 @@ bool VideoEncoder::init() {
 
     pkt_ = av_packet_alloc();
 
-    // 5. 初始化图像转换上下文 (YUYV -> YUV420P)
-    sws_ctx_ = sws_getContext(width_, height_, AV_PIX_FMT_YUYV422,
-                              width_, height_, AV_PIX_FMT_YUV420P,
-                              SWS_BILINEAR, NULL, NULL, NULL);
+    // 5. 初始化图像转换上下文 (xxxx -> YUV420P)
+    sws_ctx_ = sws_getContext(width_, height_, input_pix_fmt_,
+                                  width_, height_, AV_PIX_FMT_YUV420P,
+                                  SWS_BILINEAR, NULL, NULL, NULL);
     
     if (!sws_ctx_) {
         std::cerr << "[Encoder] Could not initialize SwsContext" << std::endl;
@@ -67,17 +73,29 @@ bool VideoEncoder::init() {
     return true;
 }
 
-void VideoEncoder::encode(const void* yuyv_data, EncodeCallback callback) {
+void VideoEncoder::encode(const void* raw_data, EncodeCallback callback) {
     if (!codec_ctx_ || !frame_yuv420_ || !sws_ctx_) return;
 
-    // 1. 格式转换: YUYV (Packed) -> YUV420P (Planar)
-    // YUYV 步长 = width * 2
-    const uint8_t* srcSlice[] = { (const uint8_t*)yuyv_data };
-    int srcStride[] = { width_ * 2 };
-    
-    // 执行转换
+    // 1. 格式转换: XXXX (Packed) -> YUV420P (Planar)
+    // 计算 stride (步长)
+    const uint8_t* srcSlice[] = { (const uint8_t*)raw_data };
+    int srcStride[] = { 0 };
+
+    // 根据不同格式计算 stride
+    if (input_pix_fmt_ == AV_PIX_FMT_YUYV422 || input_pix_fmt_ == AV_PIX_FMT_UYVY422) {
+        srcStride[0] = width_ * 2; // 16 bits per pixel
+    } else if (input_pix_fmt_ == AV_PIX_FMT_RGB565LE) {
+        srcStride[0] = width_ * 2; // 16 bits per pixel
+    } else {
+        // 默认兜底
+        srcStride[0] = width_ * 2;
+    }
+
+    // 执行转换 (FFmpeg 会自动处理 UYVY/RGB565 -> YUV420P)
     sws_scale(sws_ctx_, srcSlice, srcStride, 0, height_,
               frame_yuv420_->data, frame_yuv420_->linesize);
+
+    /////////////////////////////////////////////////////////
 
     // 设置 PTS (Presentation Time Stamp)，防止 FFmpeg 警告
     frame_yuv420_->pts = frame_count_++;

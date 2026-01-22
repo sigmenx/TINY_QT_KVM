@@ -87,7 +87,7 @@ void VideoController::quitThread()
 
 // ================= 子线程逻辑 =================
 
-// 【核心优化】硬件状态同步机
+// 硬件状态同步机
 // 这个函数负责将“期望参数”应用到“实际硬件”上
 void VideoController::syncHardwareState()
 {
@@ -117,10 +117,10 @@ void VideoController::syncHardwareState()
 
     // 2. 处理摄像头变更 (优先级最高)
     if (needCamReset && m_camera) {
-        //qDebug() << "Sync: Restarting Camera...";
+        //qDebug() << "[videocontroller]Sync: Restarting Camera...";
         m_camera->stopCapturing();
         if (!m_camera->startCapturing(targetW, targetH, targetFmt, targetFps)) {
-            //qDebug() << "Sync: Camera start failed!";
+            //qDebug() << "[videocontroller]Sync: Camera start failed!";
             QMutexLocker locker(&m_mutex);
             m_pause = true; // 失败则暂停
             return;
@@ -133,30 +133,40 @@ void VideoController::syncHardwareState()
     // 3. 处理网络/编码器变更
     // 触发条件：网络开关切换 OR 摄像头刚刚重启过
     if (needNetReset) {
-        //qDebug() << "Sync: Updating Network State...";
-
         // A. 清理旧资源
         if (m_encoder) { delete m_encoder; m_encoder = nullptr; }
 
-        // Server 的处理比较特殊：如果只是分辨率变了(needNetReset由摄像头触发)，Server不用重启
-        // 只有 targetNetOn 变了 或者 端口变了 才需要动 Server
-        // 但为了简单，这里逻辑是：如果要开，确保有；如果要关，确保无。
-
         if (targetNetOn) {
-            // 确保 Server 存在
             if (!m_server) {
                 m_server = new WebServer(targetPort);
             }
-            // 重建 Encoder (必须匹配当前摄像头参数)
-            if (m_camera->getPixelFormat() == V4L2_PIX_FMT_YUYV) {
-                int bitrate = targetW * targetH * 2;
-                if (bitrate < 400000) bitrate = 400000;
-                m_encoder = new VideoEncoder(targetW, targetH, bitrate);
-                m_encoder->init();
-                //qDebug() << "Sync: Encoder Created.";
+
+            // 【核心修改】根据摄像头格式创建编码器
+            uint32_t camFmt = m_camera->getPixelFormat();
+            AVPixelFormat encoderInputFmt = AV_PIX_FMT_NONE;
+
+            // 映射 V4L2 -> FFmpeg
+            if (camFmt == V4L2_PIX_FMT_YUYV) {
+                encoderInputFmt = AV_PIX_FMT_YUYV422;
+            } else if (camFmt == V4L2_PIX_FMT_UYVY) {
+                encoderInputFmt = AV_PIX_FMT_UYVY422;
+            } else if (camFmt == V4L2_PIX_FMT_RGB565) {
+                encoderInputFmt = AV_PIX_FMT_RGB565LE; // ARM 通常是 Little Endian
             }
+
+            // 只有支持的格式才创建编码器
+            if (encoderInputFmt != AV_PIX_FMT_NONE) {
+                int bitrate = targetW * targetH * 2; // 估算码率
+                if (bitrate < 400000) bitrate = 400000;
+
+                // 传入 encoderInputFmt
+                m_encoder = new VideoEncoder(targetW, targetH, bitrate, encoderInputFmt);
+                m_encoder->init();
+            } else {
+                qDebug() << "[videocontroller]Sync: Unsupported format for encoding:" << camFmt;
+            }
+
         } else {
-            // 关闭 Server
             if (m_server) { delete m_server; m_server = nullptr; }
         }
     }
@@ -164,7 +174,10 @@ void VideoController::syncHardwareState()
 
 void VideoController::run()
 {
-    qDebug() << "VideoController: Run loop started.";
+    qDebug() << "[videocontroller] Run loop started.";
+
+    // 超时计数器
+    int timeoutCounter = 0;
 
     while (true) {
         // --- 1. 线程控制与等待 ---
@@ -232,6 +245,7 @@ void VideoController::run()
         if (m_camera && m_camera->isCapturing()) {
             size_t len = 0;
             int index = -1;
+            // dequeue 是非阻塞的，没数据会很快返回 nullptr
             uint8_t* rawData = m_camera->dequeue(len, index);
 
             if (rawData) {
@@ -239,19 +253,36 @@ void VideoController::run()
                 QImage img;
                 m_camera->toQImage(rawData, len, img);
                 emit frameReady(img);
-
                 // 分支2: 网络 (直接使用成员变量，已经在 syncHardwareState 中保证了有效性)
                 if (m_encoder && m_server && m_server->GetClientNumber() > 0) {
                     m_encoder->encode(rawData, [this](uint8_t* data, int size){
                         m_server->broadcast(data, size);
                     });
                 }
-
                 m_camera->enqueue(index);
+            }else{
+                // === 没信号 (dequeue返回空) ===
+                timeoutCounter++;
+                // 自动重启逻辑
+                // 假设 dequeue 超时是 200ms (select)，那么 10 次就是 2秒
+                // 如果你没有用 select，而是纯非阻塞轮询，这里阈值要设大一点（比如 200）
+                if (timeoutCounter > 10) {
+                    qDebug() << "[videocontroller] Signal lost. Restarting camera...";
+                    // 执行重启序列 (模拟手动点击“应用修改”)
+                    m_camera->stopCapturing();  // 发送 STREAM_OFF
+                    QThread::msleep(200);       // 歇一会，让硬件复位
+                    //加锁？
+                    m_camera->startCapturing(m_cfgWidth, m_cfgHeight, m_cfgFmt, m_cfgFps); // 发送 STREAM_ON
+                    // 重置计数器，给新一轮尝试留出时间
+                    timeoutCounter = 0;
+                }
+                // 避免 CPU 100% (如果 dequeue 是纯非阻塞且没加 select，这句很重要)
+                QThread::msleep(10);
             }
+
         } else {
             msleep(10);
         }
     }
-    qDebug() << "VideoController: Run loop finished.";
+    qDebug() << "[videocontroller] Run loop finished.";
 }

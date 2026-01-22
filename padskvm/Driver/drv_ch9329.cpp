@@ -42,7 +42,7 @@ bool CH9329Driver::init(const QString &portName, int baudRate)
         // m_serial->setReadBufferSize(4096);
         return true;
     } else {
-        qDebug() << "Serial Open Failed:" << m_serial->errorString();
+        qDebug() << "[CH9329]Serial Open Failed:" << m_serial->errorString();
         return false;
     }
 }

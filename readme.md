@@ -1,4 +1,4 @@
-# TinyQTKVM
+# PADSKVM
 
 一个基于 Qt/C++ 开发的高性能嵌入式 **IP-KVM (Keyboard, Video, Mouse)** 解决方案。该项目运行在 Linux 平台上，通过 V4L2 采集 HDMI 视频信号，经过 H.264 编码后通过 WebSocket 推流到 Web 端，同时支持本地和远程的键鼠控制 (HID) ，通过 CH9329 硬件模拟器发送给被控端。
 
@@ -27,15 +27,15 @@
 ### 2.2 x86架构Linux系统
 1. 进入项目根目录：
    ```bash
-   cd tinyqtkvm
+   cd padskvm
 
    mkdir build && cd build
 
-   qmake ../kvmdisplay.pro
+   qmake ../padskvm.pro
 
    make -j$(nproc)
 
-   sudo ./kvmdisplay
+   sudo ./padskvm
    ```
 
 ### 2.3 TSPI-RK3566开发板（ARM架构）
@@ -45,7 +45,7 @@
    LIBS += -L$$PWD/SDK/ElaWidgetTools/lib/arm -lElaWidgetTools
    QMAKE_RPATHDIR += $$PWD/SDK/ElaWidgetTools/lib/arm
    ```
-2. 重复3.1中的步骤，完成编译并运行。
+2. 重复2.2中的步骤，完成编译并运行。
 
 
 https://github.com/user-attachments/assets/be0b6e8c-1b00-4550-8f39-513f3b976266

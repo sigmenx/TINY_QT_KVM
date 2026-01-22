@@ -1,6 +1,5 @@
 #include "ui_display.h"
 
-#include <QDebug>
 #include <QFileDialog>
 #include <QSerialPortInfo>
 #include <QHostAddress>
@@ -249,9 +248,12 @@ void ui_display::on_btn_vid_SetApply_clicked()
     QSize sz = cmb_vid_ResSelect->currentData().toSize();
     int fps = cmb_vid_FpsSelect->currentData().toInt();
 
-    if(btn_web_Start->getIsToggled() && fmt != V4L2_PIX_FMT_YUYV){
-        QMessageBox::warning(this, "提示", "请先关闭IP-KVM");
-        return;
+    if(btn_web_Start->getIsToggled()) {
+        if (fmt != V4L2_PIX_FMT_YUYV && fmt != V4L2_PIX_FMT_UYVY && fmt != V4L2_PIX_FMT_RGB565)
+        {
+             QMessageBox::warning(this, "提示", "当前格式不支持 IP-KVM，请切换格式");
+             return;
+        }
     }
 
     // 直接调用 updateSettings，线程内部会自动暂停、重配、重启
@@ -328,7 +330,7 @@ void ui_display::on_btn_vid_PicCap_clicked()
         QString fileName = QFileDialog::getSaveFileName(this, "保存截图", "", "Images (*.png *.jpg)");
         if (!fileName.isEmpty()) {
             pix->save(fileName);
-            qDebug() << "截图已保存:" << fileName;
+
         }
     }
 }
@@ -346,8 +348,10 @@ void ui_display::on_btn_web_Start_clicked()
         bool portOk = false;
         int port = txt_web_Port->text().toInt(&portOk);
 
+        bool fmtOk = (currentFmt == V4L2_PIX_FMT_YUYV ||currentFmt == V4L2_PIX_FMT_UYVY ||currentFmt == V4L2_PIX_FMT_RGB565);
+
         // 2. 校验：必须是 YUYV 格式 且 端口有效
-        if (currentFmt == V4L2_PIX_FMT_YUYV && portOk && port > 0 && port <= 65535) {
+        if (fmtOk && portOk && port > 0 && port <= 65535) {
             // 3. 尝试启动
             if (m_VideoManager->startServer(port)) {
                 // 成功：改变按钮状态

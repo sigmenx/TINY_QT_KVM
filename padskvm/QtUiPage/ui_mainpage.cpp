@@ -227,7 +227,7 @@ void ui_mainpage::refreshCameraList()
             ui->cameraTable->setIndexWidget(statusIndex, statusLabel);
 
             validCount++;
-            qDebug() << "Found Camera:" << cardName << "Path:" << fullPath << "Busy:" << isBusy;
+            qDebug() << "[UIMP]Found Camera:" << cardName << "Path:" << fullPath << "Busy:" << isBusy;
         }
 
         // 别忘了关闭文件描述符
@@ -235,7 +235,7 @@ void ui_mainpage::refreshCameraList()
     }
 
     if (validCount == 0) {
-        qDebug() << "No valid camera devices found.";
+        qDebug() << "[UIMP]No valid camera devices found.";
     }
 }
 
@@ -318,7 +318,7 @@ void ui_mainpage::on_btnOpen_clicked()
     }
 
     //打开 Display 的逻辑
-    qDebug() << "Launching Display -> Cam:" << camPath;
+    qDebug() << "[UIMP]Launching Display -> Cam:" << camPath;
 
     ui_display *disp = new ui_display(camPath);
     disp->setAttribute(Qt::WA_DeleteOnClose);

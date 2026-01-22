@@ -18,7 +18,7 @@ using EncodeCallback = std::function<void(uint8_t*, int)>;
 
 class VideoEncoder {
 public:
-    VideoEncoder(int width, int height, int bitrate = 400000);
+    VideoEncoder(int width, int height, int bitrate = 400000, AVPixelFormat inputFmt = AV_PIX_FMT_NONE);
     ~VideoEncoder();
 
     // 初始化 FFmpeg 编码器资源
@@ -33,6 +33,7 @@ private:
     int bitrate_;
     int frame_count_ = 0;
 
+    AVPixelFormat input_pix_fmt_;  //输入视频流类型
     AVCodecContext* codec_ctx_ = nullptr;
     AVFrame* frame_yuv420_ = nullptr; // 用于存放转换后的 YUV420P 数据
     AVPacket* pkt_ = nullptr;         // 用于存放编码后的压缩数据

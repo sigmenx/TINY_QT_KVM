@@ -51,19 +51,28 @@ public:
     void toQImage(const uint8_t* rawData, size_t len, QImage &outImage);
 
     // [兼容旧接口] 内部自动调用上述三个函数
-    bool captureFrame(QImage &image);
+    //bool captureFrame(QImage &image);
 
     // 获取当前像素格式 (供 VideoThread 判断是否允许转发)
     unsigned int getPixelFormat() const { return m_pixelFormat; }
 
 private:
     // 内部辅助函数
-    void initMmap();
+    bool initMmap();
     void freeMmap();
-    // 注意：这里改为 const 输入
+    // 视频转换函数
     void yuyv_to_rgb(const unsigned char *yuyv, unsigned char *rgb, int width, int height);
+    void uyvy_to_rgb(const unsigned char *uyvy, unsigned char *rgb, int width, int height);
+    void rgb565_to_rgb(const unsigned char *raw, unsigned char *rgb, int width, int height);
+
+    // 辅助函数：检测设备是否为 MPLANE
+    void probeBufferType();
 
 private:
+
+    // 存储 V4L2 缓冲类型 (CAPTURE 或 CAPTURE_MPLANE)
+    unsigned int m_bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
     QString m_devicePath;
     int m_fd;
     bool m_isCapturing;

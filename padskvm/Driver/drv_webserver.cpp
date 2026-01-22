@@ -29,21 +29,17 @@ std::string load_file_content(const std::string& filename) {
     QString qFilename = QString::fromStdString(filename);
     QFile file(qFilename);
 
-// === [调试代码] 打印所有资源文件路径 ===
-qDebug() << "=== Dumping Qt Resources ===";
-QDir dir(":/"); // 从根目录开始遍历
-for (QString file : dir.entryList()) {
-    qDebug() << "Found:" << file;
-}
-// 如果你在 qrc 里加了前缀，比如 /web，那就遍历 :/web
-// ======================================
+//    QDir dir(":/"); // 从根目录开始遍历
+//    for (QString file : dir.entryList()) {
+//        qDebug() << "Found:" << file;
+//    }
+//     如果你在 qrc 里加了前缀，比如 /web，那就遍历 :/web
 
     // 以只读和文本模式打开
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << "[WebServer] Error: Cannot open Qt Resource" << qFilename;
         return "";
     }
-
 
     // 读取所有内容
     QByteArray data = file.readAll();
@@ -80,7 +76,7 @@ WebServer::WebServer(int port) {
         exit(1);
     }
 
-    printf("[WebServer] Running at http://0.0.0.0:%d\n", port);
+    qDebug() <<"[WebServer] Running at http://0.0.0.0:"<<port;
 }
 
 WebServer::~WebServer() {
@@ -113,7 +109,7 @@ void WebServer::handle_new_connections() {
             int flags = fcntl(client_fd, F_GETFL, 0);
             fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
             clients_.push_back(client_fd);
-            printf("[WebServer] New Client: %s\n", inet_ntoa(client_addr.sin_addr));
+            qDebug() << "[WebServer] New Client";   //: %s\n", inet_ntoa(client_addr.sin_addr));
         } else {
             close(client_fd);
         }
