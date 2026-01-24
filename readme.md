@@ -2,33 +2,72 @@
 
 一个基于 Qt/C++ 开发的高性能嵌入式 **IP-KVM (Keyboard, Video, Mouse)** 解决方案。该项目运行在 Linux 平台上，通过 V4L2 采集 HDMI 视频信号，经过 H.264 编码后通过 WebSocket 推流到 Web 端，同时支持本地和远程的键鼠控制 (HID) ，通过 CH9329 硬件模拟器发送给被控端。
 
-![软件示意图1](imgs/fig01.png)
+视频链接：https://b23.tv/mAZ4r91
+
+![软件示意图](imgs/fig01.png)
 
 ## 一、硬件说明
-### 1.1 硬件清单
-- HDMI采集卡（用于获取目标设备的图像数据）
-- 串口模块与CH9329模块
-- 运行Linux系统的主机（配有网卡）
-- 配套连接线（HDMI线、串口线等）
 
-### 1.2 硬件连接
-1. HDMI采集卡输入端连接 目标设备 的HDMI输出口，输出端连接 运行本软件的Linux设备；
-2. CH9329模块的串口端连接 本Linux设备 的串口，USB端模拟键鼠输入至 目标设备；
+使用RK3566泰山派 + TC358743(HDMI-MIPICSI)模块 + CH9329(串口-HID)模块,连接如下：
+
+![连线示意图](imgs/fig02.jpg)
+
+<!--https://github.com/user-attachments/assets/be0b6e8c-1b00-4550-8f39-513f3b976266-->
 
 ## 二、编译与运行
 
-### 2.1 核心依赖
+本软件在UBUNTU22(内核5.10)上编译。使用的系统为:
+https://github.com/CmST0us/tspi-linux-sdk.
+
+<!--
 - Qt 5.15.3（图形界面开发框架）
 - V4L2框架（Linux视频设备驱动框架，用于采集HDMI视频流）
 - QSerialPort（Qt串口通信库，用于控制CH9329模块）
 - ElaWidgetTools（仓库地址：https://github.com/Liniyous/ElaWidgetTools ）
 - FFmpeg OpenSSL
+- 安装命令：
+-->
+### 2.1 安装依赖
 
-### 2.2 x86架构Linux系统
-1. 进入项目根目录：
+1. 更新源：
+    
+    ```bash
+    sudo apt update
+    ```
+
+2. 安装v4l/QT5/ffmpeg库 
+  
+    ```bash
+    sudo apt install -y v4l-utils
+  
+    sudo apt install -y qt5-qmake qtbase5-dev
+  
+    sudo apt install -y qtmultimedia5-dev libqt5serialport5-dev
+  
+    sudo apt install -y libavcodec-dev libswscale-dev
+    ```
+
+### 2.2 进行编译
+
+1. 进入项目根目录，修改项目配置文件`kvmdisplay.pro`：
+
    ```bash
    cd padskvm
 
+   vi padskvm.pro
+   ```
+
+2. 取消下面两行的注释，切换ElaWidgetTools动态库为ARM架构路径：
+
+   ```bash
+   LIBS += -L$$PWD/SDK/ElaWidgetTools/lib/arm -lElaWidgetTools
+   
+   QMAKE_RPATHDIR += $$PWD/SDK/ElaWidgetTools/lib/arm
+   ```
+
+3. 保存并退出，然后执行编译并运行：
+   
+   ```bash
    mkdir build && cd build
 
    qmake ../padskvm.pro
@@ -37,19 +76,6 @@
 
    sudo ./padskvm
    ```
-
-### 2.3 TSPI-RK3566开发板（ARM架构）
-由于开发板为ARM架构，需指定ElaWidgetTools的ARM架构库文件路径，步骤如下：
-1. 修改项目配置文件`kvmdisplay.pro`，添加ARM架构库路径：
-   ```qmake
-   LIBS += -L$$PWD/SDK/ElaWidgetTools/lib/arm -lElaWidgetTools
-   QMAKE_RPATHDIR += $$PWD/SDK/ElaWidgetTools/lib/arm
-   ```
-2. 重复2.2中的步骤，完成编译并运行。
-
-
-https://github.com/user-attachments/assets/be0b6e8c-1b00-4550-8f39-513f3b976266
-
 
 ## 三、软件架构
 
@@ -152,7 +178,6 @@ https://github.com/user-attachments/assets/be0b6e8c-1b00-4550-8f39-513f3b976266
 
 
 ## 四、项目技术亮点 (Key Highlights)
-
 
 1. **极低延迟架构 (Low Latency)**：
 * FFmpeg 编码参数极致优化 (No Buffer, No B-frames)。
